@@ -43,6 +43,7 @@
             font-size: 16px;
             cursor: pointer;
             transition: 0.3s;
+            margin: 5px;
         }
         button:hover {
             background: #134713;
@@ -59,98 +60,184 @@
             font-size: 0.9em;
             margin-top: 5px;
         }
+        .buttons {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .icon {
+            font-size: 2em;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 10px;
+        }
+        h1 .icon {
+            vertical-align: middle;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🩺 Калькулятор зон исследования</h1>
+        <h1><span class="icon">🩺</span>Калькулятор зон исследования</h1>
         
-        <div class="step">
+        <div class="step" id="step1">
             <h3>Шаг 1. Выберите исследования:</h3>
             <input type="checkbox" id="kt_ogk" name="research" value="КТ ОГК">
             <label for="kt_ogk">КТ органов грудной клетки (ОГК)</label><br>
-            
             <input type="checkbox" id="kt_obp" name="research" value="КТ ОБП">
             <label for="kt_obp">КТ органов брюшной полости (ОБП)</label><br>
-            
             <input type="checkbox" id="kt_omt" name="research" value="КТ ОМТ">
             <label for="kt_omt">КТ органов малого таза (ОМТ)</label><br>
-            
             <input type="checkbox" id="pet_ct" name="research" value="ПЭТ-КТ">
-            <label for="pet_ct">ПЭТ-КТ (любая область)</label><br>
-            
+            <label for="pet_ct">ПЭТ-КТ</label><br>
             <input type="checkbox" id="mrt" name="research" value="МРТ">
             <label for="mrt">МРТ</label>
             <input type="text" id="mrt_area" placeholder="Укажите область" disabled>
             <div class="warning" id="mrt_warning"></div>
         </div>
 
-        <div class="step" id="serviceStep" style="display:none;">
-            <h3>Шаг 2. Выберите тип услуги:</h3>
-            <input type="radio" id="review" name="service" value="Пересмотр">
-            <label for="review">Пересмотр</label><br>
-            
-            <input type="radio" id="comparison" name="service" value="Сравнение">
-            <label for="comparison">Сравнение</label>
+        <div class="step" id="step2" style="display:none;">
+            <h3>Шаг 2. Выберите количество исследований/дисков:</h3>
+            <input type="radio" id="one" name="disks" value="1">
+            <label for="one">1</label><br>
+            <input type="radio" id="two" name="disks" value="2">
+            <label for="two">2</label><br>
+            <input type="radio" id="three" name="disks" value="3">
+            <label for="three">3</label><br>
         </div>
 
-        <div style="text-align: center; margin-top: 20px;">
-            <button onclick="calculate()">Рассчитать</button>
+        <div class="step" id="step3" style="display:none;">
+            <h3>Шаг 3. Нужно сравнение?</h3>
+            <input type="radio" id="yes" name="comparison" value="Да">
+            <label for="yes">Да</label><br>
+            <input type="radio" id="no" name="comparison" value="Нет">
+            <label for="no">Нет</label>
+        </div>
+
+        <div class="buttons">
+            <button id="startOverBtn" style="display:none;" onclick="startOver()">Начать с начала</button>
+            <button id="backBtn" style="display:none;" onclick="goBack()">Назад</button>
+            <button id="nextBtn" onclick="nextStep()">Далее</button>
         </div>
 
         <div id="result"></div>
     </div>
 
 <script>
-    // Активация поля для МРТ
+    // Включение поля для МРТ
     document.getElementById('mrt').addEventListener('change', function() {
-        const mrtField = document.getElementById('mrt_area');
-        mrtField.disabled = !this.checked;
-        if (!this.checked) mrtField.value = '';
+        document.getElementById('mrt_area').disabled = !this.checked;
+        if (!this.checked) document.getElementById('mrt_area').value = '';
     });
 
-    // Основная логика расчёта
-    function calculate() {
-        // Сбор данных
-        const researches = {
-            ktOGK: document.getElementById('kt_ogk').checked,
-            ktOBP: document.getElementById('kt_obp').checked,
-            ktOMT: document.getElementById('kt_omt').checked,
-            petCT: document.getElementById('pet_ct').checked,
-            mrt: document.getElementById('mrt').checked,
-            mrtArea: document.getElementById('mrt_area').value.trim()
-        };
+    let currentStep = 1;
 
-        // Проверка МРТ
-        if (researches.mrt && !researches.mrtArea) {
-            document.getElementById('mrt_warning').textContent = '⚠️ Укажите область МРТ!';
-            return;
-        } else {
-            document.getElementById('mrt_warning').textContent = '';
+    function showStep(step) {
+        for (let i = 1; i <= 3; i++) {
+            document.getElementById('step' + i).style.display = (i === step) ? 'block' : 'none';
         }
-
-        // Расчёт зон
-        let zones = 0;
-        if (researches.petCT) {
-            zones = 2; // Особое правило для ПЭТ-КТ
-        } else {
-            zones += researches.ktOGK ? 1 : 0;
-            zones += researches.ktOBP ? 1 : 0;
-            zones += researches.ktOMT ? 1 : 0;
-            zones += (researches.mrt && researches.mrtArea) ? 1 : 0;
-        }
-
-        // Показ второго шага
-        document.getElementById('serviceStep').style.display = zones > 0 ? 'block' : 'none';
-
-        // Вывод результата
-        const serviceType = document.querySelector('input[name="service"]:checked')?.value || 'не выбран';
-        const resultText = zones > 0 
-            ? `✅ Результат: ${zones} зон(ы), тип услуги — ${serviceType}`
-            : '⚠️ Выберите хотя бы одно исследование';
-        
-        document.getElementById('result').innerHTML = resultText;
+        document.getElementById('backBtn').style.display = (step > 1) ? 'inline-block' : 'none';
+        document.getElementById('startOverBtn').style.display = (step > 1) ? 'inline-block' : 'none';
+        document.getElementById('nextBtn').textContent = (step === 3) ? 'Завершить' : 'Далее';
+        currentStep = step;
+        document.getElementById('result').textContent = '';
     }
+
+    function nextStep() {
+        if (currentStep === 1) {
+            // Проверка выбора исследований
+            const checked = document.querySelectorAll('input[name="research"]:checked');
+            if (checked.length === 0) {
+                alert('Пожалуйста, выберите хотя бы одно исследование.');
+                return;
+            }
+            // Проверка МРТ области
+            const mrt = document.getElementById('mrt');
+            if (mrt.checked) {
+                const mrtArea = document.getElementById('mrt_area').value.trim();
+                if (mrtArea === '') {
+                    alert('Пожалуйста, укажите область МРТ.');
+                    return;
+                }
+            }
+            showStep(2);
+        } else if (currentStep === 2) {
+            // Проверка выбора количества дисков
+            const disks = document.querySelector('input[name="disks"]:checked');
+            if (!disks) {
+                alert('Пожалуйста, выберите количество исследований/дисков.');
+                return;
+            }
+            showStep(3);
+        } else if (currentStep === 3) {
+            // Проверка выбора сравнения
+            const comparison = document.querySelector('input[name="comparison"]:checked');
+            if (!comparison) {
+                alert('Пожалуйста, выберите, нужно ли сравнение.');
+                return;
+            }
+            calculateResult();
+        }
+    }
+
+    function goBack() {
+        if (currentStep > 1) {
+            showStep(currentStep - 1);
+        }
+    }
+
+    function startOver() {
+        // Сброс всех выборов
+        document.querySelectorAll('input[type=radio], input[type=checkbox]').forEach(el => el.checked = false);
+        document.getElementById('mrt_area').value = '';
+        document.getElementById('mrt_area').disabled = true;
+        document.getElementById('result').textContent = '';
+        showStep(1);
+    }
+
+    function calculateResult() {
+        // Сбор данных
+        const checked = document.querySelectorAll('input[name="research"]:checked');
+        const comparison = document.querySelector('input[name="comparison"]:checked').value;
+
+        let hasPET = false;
+        let hasOGK = false, hasOBP = false, hasOMT = false;
+        let hasMRT = false;
+        let zones = 0;
+
+        checked.forEach(cb => {
+            if (cb.value === 'ПЭТ-КТ') hasPET = true;
+            if (cb.value === 'КТ ОГК') hasOGK = true;
+            if (cb.value === 'КТ ОБП') hasOBP = true;
+            if (cb.value === 'КТ ОМТ') hasOMT = true;
+            if (cb.value === 'МРТ') hasMRT = true;
+        });
+
+        // Логика расчёта зон
+        if (hasPET) {
+            zones = 2;
+        } else if (hasOGK && hasOBP && hasOMT) {
+            zones = 2; // по flowchart
+        } else {
+            zones += hasOGK ? 1 : 0;
+            zones += hasOBP ? 1 : 0;
+            zones += hasOMT ? 1 : 0;
+        }
+        if (hasMRT) {
+            const mrtArea = document.getElementById('mrt_area').value.trim();
+            if (mrtArea !== '') zones += 1;
+        }
+
+        let resultText = '';
+        if (comparison === 'Да') {
+            resultText = `Нужно сравнение. Количество зон: ${zones}.`;
+        } else {
+            resultText = `Пересмотр. Количество зон: ${zones}.`;
+        }
+        document.getElementById('result').textContent = resultText;
+    }
+
+    // Инициализация
+    showStep(1);
 </script>
 </body>
 </html>
